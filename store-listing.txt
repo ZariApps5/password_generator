@@ -1,0 +1,57 @@
+========================================
+PASSWORD GENERATOR — PLAY STORE LISTING
+========================================
+
+APP TITLE (50 chars max)
+------------------------
+Password Generator — Secure & Random
+
+
+SHORT DESCRIPTION (80 chars max)
+---------------------------------
+Create strong, random passwords instantly. Copy with one tap.
+
+
+FULL DESCRIPTION (4000 chars max)
+----------------------------------
+Password Generator is the fastest way to create strong, secure passwords on your phone. No ads, no internet required, no accounts — just pure, offline security.
+
+🔒 STRONG BY DEFAULT
+Every password is generated with cryptographically random characters, guaranteeing true randomness. You control the length (4–64 characters) and which character types to include: uppercase, lowercase, numbers, and symbols.
+
+⚡ INSTANT GENERATION
+Tap once to generate. Tap again to copy. Your new password is on the clipboard in under a second.
+
+📊 STRENGTH METER
+A real-time strength indicator shows you exactly how secure your password is — Weak, Fair, Good, or Strong — based on length and character variety.
+
+🕓 HISTORY
+The last 8 generated passwords are saved in your session so you can always go back and copy a previous one.
+
+🌙☀ DARK & LIGHT MODE
+Choose the theme that suits you — a deep indigo dark mode for low-light environments, or a clean light mode for daytime use. Your preference is saved automatically.
+
+✅ 100% OFFLINE
+No internet connection required, ever. Your passwords never leave your device.
+
+PERFECT FOR:
+• Creating passwords for new accounts
+• Replacing weak or reused passwords
+• Security-conscious users who want full control
+
+No tracking. No analytics. No permissions required.
+
+
+KEYWORDS / TAGS
+---------------
+password generator, strong password, random password, secure password, password maker, password creator, offline password, no ads
+
+
+CATEGORY
+--------
+Tools
+
+
+CONTENT RATING
+--------------
+Everyone

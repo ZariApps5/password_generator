@@ -40,20 +40,49 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ── Colors ───────────────────────────────────────────────
+// ── Theme colors ─────────────────────────────────────────
 
-val BgColor          = Color(0xFF0D0D1A)
-val SurfaceColor     = Color(0xFF141426)
-val RaisedColor      = Color(0xFF1E1E32)
-val BorderColor      = Color(0xFF2A2A45)
-val AccentColor      = Color(0xFF818CF8)
-val AccentDark       = Color(0xFF4F46E5)
-val TextColor        = Color(0xFFE2E0F9)
-val MutedColor       = Color(0xFF7070A0)
-val WeakColor        = Color(0xFFEF4444)
-val FairColor        = Color(0xFFFB923C)
-val GoodColor        = Color(0xFFFBBF24)
-val StrongColor      = Color(0xFF34D399)
+data class AppColors(
+    val bgColor: Color,
+    val surfaceColor: Color,
+    val raisedColor: Color,
+    val borderColor: Color,
+    val accentColor: Color,
+    val accentDark: Color,
+    val textColor: Color,
+    val mutedColor: Color,
+)
+
+val darkColors = AppColors(
+    bgColor      = Color(0xFF0D0D1A),
+    surfaceColor = Color(0xFF141426),
+    raisedColor  = Color(0xFF1E1E32),
+    borderColor  = Color(0xFF2A2A45),
+    accentColor  = Color(0xFF818CF8),
+    accentDark   = Color(0xFF4F46E5),
+    textColor    = Color(0xFFE2E0F9),
+    mutedColor   = Color(0xFF7070A0),
+)
+
+val lightColors = AppColors(
+    bgColor      = Color(0xFFF5F4FF),
+    surfaceColor = Color(0xFFFFFFFF),
+    raisedColor  = Color(0xFFEEECFF),
+    borderColor  = Color(0xFFCCCAE8),
+    accentColor  = Color(0xFF4F46E5),
+    accentDark   = Color(0xFF3730A3),
+    textColor    = Color(0xFF1A1640),
+    mutedColor   = Color(0xFF6B6A99),
+)
+
+val LocalColors = compositionLocalOf { darkColors }
+
+// ── Strength colors (theme-independent) ──────────────────
+
+val WeakColor   = Color(0xFFEF4444)
+val FairColor   = Color(0xFFFB923C)
+val GoodColor   = Color(0xFFFBBF24)
+val StrongColor = Color(0xFF34D399)
 
 // ── Strength ─────────────────────────────────────────────
 
@@ -87,7 +116,6 @@ fun generate(length: Int, upper: Boolean, lower: Boolean, numbers: Boolean, symb
     }
     if (pool.isEmpty()) return ""
 
-    // Guarantee at least one character from each enabled set
     val seed = mutableListOf<Char>().apply {
         if (upper)   add(UPPER.random())
         if (lower)   add(LOWER.random())
@@ -108,31 +136,53 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            AppTheme { PasswordScreen() }
-        }
+        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val savedDark = prefs.getBoolean("is_dark", false)
+        setContent { PasswordApp(initialDark = savedDark) }
     }
 }
 
 @Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            background   = BgColor,
-            surface      = SurfaceColor,
-            primary      = AccentColor,
-            onPrimary    = Color(0xFF0D0D1A),
-            onBackground = TextColor,
-            onSurface    = TextColor,
-        ),
-        content = content,
-    )
+fun PasswordApp(initialDark: Boolean) {
+    val context = LocalContext.current
+    var isDark by remember { mutableStateOf(initialDark) }
+    val colors = if (isDark) darkColors else lightColors
+
+    fun toggleTheme() {
+        isDark = !isDark
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit().putBoolean("is_dark", isDark).apply()
+    }
+
+    CompositionLocalProvider(LocalColors provides colors) {
+        PasswordScreen(isDark = isDark, onToggleTheme = ::toggleTheme)
+    }
+}
+
+// ── Theme toggle ─────────────────────────────────────────
+
+@Composable
+fun ThemeToggle(isDark: Boolean, onToggle: () -> Unit) {
+    val c = LocalColors.current
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(c.raisedColor)
+            .border(1.dp, c.borderColor, CircleShape)
+            .clickable(onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(if (isDark) "☀" else "☾", fontSize = 18.sp)
+    }
 }
 
 // ── Screen ───────────────────────────────────────────────
 
 @Composable
-fun PasswordScreen() {
+fun PasswordScreen(isDark: Boolean, onToggleTheme: () -> Unit) {
+    val c = LocalColors.current
+
     var length     by remember { mutableStateOf(16) }
     var useUpper   by remember { mutableStateOf(true) }
     var useLower   by remember { mutableStateOf(true) }
@@ -149,7 +199,6 @@ fun PasswordScreen() {
     val activeTypes = listOf(useUpper, useLower, useNumbers, useSymbols).count { it }
     val strength    = calcStrength(length, activeTypes)
 
-    // Generate on first composition
     LaunchedEffect(Unit) {
         password = generate(length, useUpper, useLower, useNumbers, useSymbols)
     }
@@ -177,7 +226,7 @@ fun PasswordScreen() {
     }
 
     Scaffold(
-        containerColor = BgColor,
+        containerColor = c.bgColor,
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { padding ->
         Column(
@@ -191,28 +240,35 @@ fun PasswordScreen() {
         ) {
 
             // ── Header ──────────────────────────────────
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "Password",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    color = AccentColor,
-                    letterSpacing = 1.sp,
-                )
-                Text(
-                    text = "Generator",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    color = TextColor,
-                    letterSpacing = 1.sp,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "Secure  ·  Random  ·  Instant",
-                    fontSize = 12.sp,
-                    color = MutedColor,
-                    letterSpacing = 2.sp,
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Password",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black,
+                        color = c.accentColor,
+                        letterSpacing = 1.sp,
+                    )
+                    Text(
+                        text = "Generator",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black,
+                        color = c.textColor,
+                        letterSpacing = 1.sp,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Secure  ·  Random  ·  Instant",
+                        fontSize = 12.sp,
+                        color = c.mutedColor,
+                        letterSpacing = 2.sp,
+                    )
+                }
+                ThemeToggle(isDark = isDark, onToggle = onToggleTheme)
             }
 
             // ── Password card ────────────────────────────
@@ -220,12 +276,11 @@ fun PasswordScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(SurfaceColor)
-                    .border(1.dp, BorderColor, RoundedCornerShape(20.dp))
+                    .background(c.surfaceColor)
+                    .border(1.dp, c.borderColor, RoundedCornerShape(20.dp))
                     .padding(20.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Password text + copy button
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -236,32 +291,30 @@ fun PasswordScreen() {
                             fontFamily = FontFamily.Monospace,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (password.isEmpty()) MutedColor else TextColor,
+                            color = if (password.isEmpty()) c.mutedColor else c.textColor,
                             letterSpacing = 1.5.sp,
                             lineHeight = 28.sp,
                         )
 
-                        // Copy button with "Copied!" feedback
                         Box(contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(CircleShape)
-                                    .background(if (showCopied) StrongColor.copy(alpha = 0.15f) else RaisedColor)
-                                    .border(1.dp, if (showCopied) StrongColor.copy(alpha = 0.5f) else BorderColor, CircleShape)
+                                    .background(if (showCopied) StrongColor.copy(alpha = 0.15f) else c.raisedColor)
+                                    .border(1.dp, if (showCopied) StrongColor.copy(alpha = 0.5f) else c.borderColor, CircleShape)
                                     .clickable { doCopy() },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = if (showCopied) "✓" else "⎘",
                                     fontSize = 18.sp,
-                                    color = if (showCopied) StrongColor else MutedColor,
+                                    color = if (showCopied) StrongColor else c.mutedColor,
                                 )
                             }
                         }
                     }
 
-                    // Strength bar
                     StrengthBar(strength = strength)
                 }
             }
@@ -271,8 +324,8 @@ fun PasswordScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceColor)
-                    .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
+                    .background(c.surfaceColor)
+                    .border(1.dp, c.borderColor, RoundedCornerShape(16.dp))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -281,18 +334,18 @@ fun PasswordScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Length", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MutedColor, letterSpacing = 1.sp)
+                    Text("Length", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.mutedColor, letterSpacing = 1.sp)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(AccentColor.copy(alpha = 0.12f))
+                            .background(c.accentColor.copy(alpha = 0.12f))
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = "$length",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = AccentColor,
+                            color = c.accentColor,
                         )
                     }
                 }
@@ -303,17 +356,17 @@ fun PasswordScreen() {
                     steps = 59,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
-                        thumbColor = AccentColor,
-                        activeTrackColor = AccentColor,
-                        inactiveTrackColor = RaisedColor,
+                        thumbColor = c.accentColor,
+                        activeTrackColor = c.accentColor,
+                        inactiveTrackColor = c.raisedColor,
                     ),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("4", fontSize = 11.sp, color = MutedColor)
-                    Text("64", fontSize = 11.sp, color = MutedColor)
+                    Text("4", fontSize = 11.sp, color = c.mutedColor)
+                    Text("64", fontSize = 11.sp, color = c.mutedColor)
                 }
             }
 
@@ -322,12 +375,12 @@ fun PasswordScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceColor)
-                    .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
+                    .background(c.surfaceColor)
+                    .border(1.dp, c.borderColor, RoundedCornerShape(16.dp))
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("Include", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MutedColor, letterSpacing = 1.sp)
+                Text("Include", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.mutedColor, letterSpacing = 1.sp)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -359,7 +412,7 @@ fun PasswordScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        Brush.linearGradient(listOf(AccentDark, AccentColor))
+                        Brush.linearGradient(listOf(c.accentDark, c.accentColor))
                     )
                     .clickable { doGenerate() }
                     .padding(vertical = 18.dp),
@@ -381,7 +434,7 @@ fun PasswordScreen() {
                         text = "RECENT",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MutedColor,
+                        color = c.mutedColor,
                         letterSpacing = 3.sp,
                         modifier = Modifier.padding(start = 2.dp),
                     )
@@ -390,8 +443,8 @@ fun PasswordScreen() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(SurfaceColor)
-                                .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
+                                .background(c.surfaceColor)
+                                .border(1.dp, c.borderColor, RoundedCornerShape(12.dp))
                                 .clickable { doCopy(entry.password) }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -402,14 +455,14 @@ fun PasswordScreen() {
                                 modifier = Modifier.weight(1f),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp,
-                                color = TextColor.copy(alpha = 0.7f),
+                                color = c.textColor.copy(alpha = 0.7f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
                                 text = entry.time,
                                 fontSize = 11.sp,
-                                color = MutedColor,
+                                color = c.mutedColor,
                             )
                         }
                     }
@@ -423,6 +476,7 @@ fun PasswordScreen() {
 
 @Composable
 fun StrengthBar(strength: Strength) {
+    val c = LocalColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -440,7 +494,7 @@ fun StrengthBar(strength: Strength) {
                         .clip(CircleShape)
                         .background(
                             if (i < strength.filled) strength.color
-                            else BorderColor
+                            else c.borderColor
                         ),
                 )
             }
@@ -465,13 +519,14 @@ fun TypeToggle(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val c = LocalColors.current
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(if (active) AccentColor.copy(alpha = 0.12f) else RaisedColor)
+            .background(if (active) c.accentColor.copy(alpha = 0.12f) else c.raisedColor)
             .border(
                 width = if (active) 1.5.dp else 1.dp,
-                color = if (active) AccentColor else BorderColor,
+                color = if (active) c.accentColor else c.borderColor,
                 shape = RoundedCornerShape(12.dp),
             )
             .clickable { onClick() }
@@ -483,14 +538,14 @@ fun TypeToggle(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (active) AccentColor.copy(alpha = 0.15f) else BorderColor.copy(alpha = 0.5f)),
+                .background(if (active) c.accentColor.copy(alpha = 0.15f) else c.borderColor.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = symbol,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
-                color = if (active) AccentColor else MutedColor,
+                color = if (active) c.accentColor else c.mutedColor,
                 fontFamily = FontFamily.Monospace,
             )
         }
@@ -499,12 +554,12 @@ fun TypeToggle(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (active) TextColor else MutedColor,
+                color = if (active) c.textColor else c.mutedColor,
             )
             Text(
                 text = if (active) "Included" else "Excluded",
                 fontSize = 11.sp,
-                color = if (active) AccentColor else MutedColor.copy(alpha = 0.6f),
+                color = if (active) c.accentColor else c.mutedColor.copy(alpha = 0.6f),
             )
         }
     }
